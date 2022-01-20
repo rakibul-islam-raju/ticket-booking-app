@@ -3,12 +3,23 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 )
 
 const conferenceTickets uint = 50
 var conferanceName = "Go Conference"
 var remainingTickets uint = 50
-var bookings = []string{}
+var bookings = make([]UserData, 0)
+
+type UserData struct {
+	firstName string
+	lastName string
+	email string
+	numberOfTickets uint
+}
+
+var wg = sync.WaitGroup{}
 
 func main()  {
 	// greet user
@@ -24,6 +35,10 @@ func main()  {
 		if isValidName && isValidEmail && isValidTicketNumber  {
 			// book ticket
 			bookTicket(userTickets, firstName, lastName, email)
+
+			// send the ticket
+			wg.Add(1)
+			go sendTicket(userTickets, firstName, lastName, email)
 
 			// first names of bookings
 			firstNames := printFirstName()
@@ -47,6 +62,7 @@ func main()  {
 			}
 		}
 	}
+	wg.Wait()
 }
 
 func getUserInput() (string, string, string, uint) {
@@ -79,8 +95,7 @@ func greetUsers() {
 func printFirstName() []string {
 	firstNames := []string{}
 	for _, booking := range bookings {
-		var names = strings.Fields(booking)
-		firstNames = append(firstNames, names[0])
+		firstNames = append(firstNames, booking.firstName)
 	}
 	return firstNames
 }
@@ -94,11 +109,30 @@ func validateUserInputs(firstName string, lastName string, email string, userTic
 }
 
 func bookTicket(userTickets uint, firstName string, lastName string, email string) {
+	// map for userInfo
+	userData := UserData {
+		firstName: firstName,
+		lastName: lastName,
+		email: email,
+		numberOfTickets: userTickets,
+	}
+
 	// ticket booking logic
 	remainingTickets = remainingTickets - userTickets
-	bookings = append(bookings, firstName + " " + lastName)
+	bookings = append(bookings, userData)
+
+	fmt.Printf("List of bookings is %v\n", bookings)
 
 	// confirmation message
 	fmt.Printf("Thank you %v %v for booking %v tickets. You will get a confirmation email at %v\n", firstName, lastName, userTickets, email)
 	fmt.Printf("%v tickets remaining for %v\n", remainingTickets, conferanceName)
+}
+
+func sendTicket(userTickets uint, firstName string, lastName string, email string) {
+	time.Sleep(5 * time.Second)
+	ticket := fmt.Sprintf("%v tickets for %v %v\n", userTickets, firstName, lastName)
+	fmt.Printf("#################")
+	fmt.Printf("Sending ticket:\n %v \nto email address %v\n", ticket, email)
+	fmt.Printf("#################")
+	wg.Done()
 }
